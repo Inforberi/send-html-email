@@ -75,12 +75,13 @@ const PLACEHOLDER_HTML =
   "<p style='padding:1.5rem;color:#6b7280;font-family:system-ui'>Тело письма (HTML или MJML) вводите слева — здесь предпросмотр перед отправкой</p>";
 
 function buildPreviewDoc(html: string, theme: "light" | "dark"): string {
-  const bodyContent = html.trim() || PLACEHOLDER_HTML;
+  let bodyContent = html.trim() || PLACEHOLDER_HTML;
+  // Чтобы наш обёрточный документ не сломался: закрывающие теги из письма не должны парситься
+  bodyContent = bodyContent.replace(/<\/body>/gi, "&lt;/body&gt;").replace(/<\/html>/gi, "&lt;/html&gt;");
   const isDark = theme === "dark";
   const metaColorScheme = isDark
     ? '<meta name="color-scheme" content="dark">'
     : '<meta name="color-scheme" content="light">';
-  // Тёмная тема: имитация почтовиков (Gmail, Apple Mail и др.) — инверсия цветов, картинки возвращаем обратно
   const darkStyles = isDark
     ? `<style>
       html{background:#0d0d0d;}
@@ -88,7 +89,15 @@ function buildPreviewDoc(html: string, theme: "light" | "dark"): string {
       body img, body video, body svg{filter:invert(1) hue-rotate(180deg);}
     </style>`
     : "";
-  return `<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8">${metaColorScheme}${darkStyles}</head><body>${bodyContent}</body></html>`;
+  // Собираем без шаблонной строки, чтобы ` и ${ в письме не ломали документ
+  return [
+    "<!DOCTYPE html><html lang=\"ru\"><head><meta charset=\"utf-8\">",
+    metaColorScheme,
+    darkStyles,
+    "</head><body>",
+    bodyContent,
+    "</body></html>",
+  ].join("");
 }
 
 export default function SendPage() {
@@ -436,8 +445,8 @@ export default function SendPage() {
               title="Как в светлой теме"
               onClick={() => setPreviewTheme("light")}
               className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${previewTheme === "light"
-                  ? "bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-sm"
-                  : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200"
+                ? "bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-sm"
+                : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200"
                 }`}
             >
               Светлая
@@ -448,8 +457,8 @@ export default function SendPage() {
               title="Как в тёмной теме"
               onClick={() => setPreviewTheme("dark")}
               className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${previewTheme === "dark"
-                  ? "bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-sm"
-                  : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200"
+                ? "bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-sm"
+                : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200"
                 }`}
             >
               Тёмная
@@ -459,8 +468,8 @@ export default function SendPage() {
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden p-4 bg-neutral-100 dark:bg-neutral-950">
           <div
             className={`flex-1 min-h-0 rounded-lg border overflow-hidden shadow-sm ${previewTheme === "dark"
-                ? "border-neutral-600 bg-neutral-900"
-                : "border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900"
+              ? "border-neutral-600 bg-neutral-900"
+              : "border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900"
               }`}
           >
             <iframe
